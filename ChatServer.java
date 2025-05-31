@@ -21,11 +21,9 @@ public class ChatServer {
             serverSocket = new ServerSocket(port);
             System.out.println("✅ Servidor iniciado en el puerto " + port);
 
-            // Inicia el hilo de consola de administración
             Thread consoleThread = new Thread(new ServerConsoleManager(this));
             consoleThread.start();
 
-            // Bucle principal del servidor
             while (isRunning) {
                 Socket clientSocket = serverSocket.accept();
 
@@ -51,25 +49,30 @@ public class ChatServer {
         }
     }
 
-    // Enviar mensaje a todos los clientes
-    public void broadcast(String message) {
-        messageHistory.offer(message); // Guardar en historial
-        if (messageHistory.size() > MAX_HISTORY) {
-            messageHistory.poll(); // Mantener tamaño máximo
+    // Método modificado para ignorar al cliente que pregunta
+    public boolean isNameTaken(String name, ClientHandler askingClient) {
+        for (ClientHandler client : clientHandlers) {
+            if (client == askingClient) continue;
+            String existingName = client.getClientName();
+            if (existingName != null && existingName.equalsIgnoreCase(name)) {
+                return true;
+            }
         }
+        return false;
+    }
 
+    public void broadcast(String message) {
+        messageHistory.offer(message);
         for (ClientHandler client : clientHandlers) {
             client.sendMessage(message);
         }
     }
 
-    // Eliminar un cliente del sistema
     public void removeClient(ClientHandler client) {
         clientHandlers.remove(client);
         System.out.println("🔌 Cliente desconectado. Total: " + clientHandlers.size());
     }
 
-    // Listar usuarios conectados
     public void listConnectedUsers() {
         if (clientHandlers.isEmpty()) {
             System.out.println("📭 No hay usuarios conectados.");
@@ -81,26 +84,10 @@ public class ChatServer {
         }
     }
 
-    // Contar usuarios conectados
     public int getConnectedUserCount() {
         return clientHandlers.size();
     }
 
-    // Expulsar un usuario por nombre
-    public boolean kickUser(String username) {
-        for (ClientHandler client : clientHandlers) {
-            if (client.getClientName().equalsIgnoreCase(username)) {
-                client.sendMessage("⚠️ Has sido expulsado del chat por el administrador.");
-                client.closeConnection();
-                removeClient(client);
-                broadcast("⚠️ Usuario '" + username + "' fue expulsado del chat.");
-                return true;
-            }
-        }
-        return false; // Usuario no encontrado
-    }
-
-    // Apagar el servidor desde la consola
     public void shutdownServer() {
         isRunning = false;
 
@@ -121,7 +108,6 @@ public class ChatServer {
         }
     }
 
-    // Método principal
     public static void main(String[] args) {
         ChatServer server = new ChatServer();
         server.start(PORT);

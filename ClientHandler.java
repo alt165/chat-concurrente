@@ -35,21 +35,33 @@ public class ClientHandler implements Runnable {
     @Override
     public void run() {
         try {
-            // Flujo de entrada/salida
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new PrintWriter(socket.getOutputStream(), true);
 
-            // Solicita nombre de usuario
             out.println("📝 Ingresá tu nombre de usuario:");
-            clientName = in.readLine();
 
-            if (clientName == null || clientName.isBlank()) {
-                clientName = "Anónimo";
+            int attempts = 0;
+            while (attempts < 3) {
+                clientName = in.readLine();
+
+                if (clientName == null || clientName.isBlank()) {
+                    out.println("❌ El nombre no puede estar vacío. Intenta de nuevo:");
+                } else if (server.isNameTaken(clientName, this)) {
+                    out.println("❌ El nombre ya está en uso. Intenta con otro:");
+                } else {
+                    break; // Nombre válido y disponible
+                }
+
+                attempts++;
+            }
+
+            if (clientName == null || clientName.isBlank() || server.isNameTaken(clientName, this)) {
+                clientName = "Anónimo" + (int)(Math.random() * 1000);
+                out.println("⚠️ Se asignó un nombre automático: " + clientName);
             }
 
             server.broadcast("🟢 " + clientName + " se ha unido al chat.");
 
-            // Enviar historial si hay
             if (!ChatServer.messageHistory.isEmpty()) {
                 out.println("📜 Historial de mensajes:");
                 for (String msg : ChatServer.messageHistory) {
@@ -57,7 +69,6 @@ public class ClientHandler implements Runnable {
                 }
             }
 
-            // Bucle de escucha
             String message;
             while ((message = in.readLine()) != null) {
                 if (message.equalsIgnoreCase("/salir")) {
