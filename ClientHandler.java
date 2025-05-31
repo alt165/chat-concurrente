@@ -39,25 +39,10 @@ public class ClientHandler implements Runnable {
             out = new PrintWriter(socket.getOutputStream(), true);
 
             out.println("📝 Ingresá tu nombre de usuario:");
+            clientName = in.readLine();
 
-            int attempts = 0;
-            while (attempts < 3) {
-                clientName = in.readLine();
-
-                if (clientName == null || clientName.isBlank()) {
-                    out.println("❌ El nombre no puede estar vacío. Intenta de nuevo:");
-                } else if (server.isNameTaken(clientName, this)) {
-                    out.println("❌ El nombre ya está en uso. Intenta con otro:");
-                } else {
-                    break; // Nombre válido y disponible
-                }
-
-                attempts++;
-            }
-
-            if (clientName == null || clientName.isBlank() || server.isNameTaken(clientName, this)) {
-                clientName = "Anónimo" + (int)(Math.random() * 1000);
-                out.println("⚠️ Se asignó un nombre automático: " + clientName);
+            if (clientName == null || clientName.isBlank()) {
+                clientName = "Anónimo";
             }
 
             server.broadcast("🟢 " + clientName + " se ha unido al chat.");
@@ -81,7 +66,6 @@ public class ClientHandler implements Runnable {
 
         } catch (IOException e) {
             System.err.println("❌ Error con cliente " + clientName + ": " + e.getMessage());
-
         } finally {
             server.removeClient(this);
             server.broadcast("🔴 " + clientName + " ha salido del chat.");

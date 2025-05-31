@@ -13,17 +13,13 @@ public class ServerConsoleManager implements Runnable {
         Scanner scanner = new Scanner(System.in);
         String command;
 
-        printHelp(); // Mostrar comandos al inicio
-
         while (true) {
-            System.out.print("> ");
             command = scanner.nextLine().trim();
 
             if (command.isEmpty()) continue;
 
-            String[] parts = command.split(" ", 2);
+            String[] parts = command.split("\\s+", 2);
             String cmd = parts[0].toLowerCase();
-            String args = parts.length > 1 ? parts[1].trim() : "";
 
             switch (cmd) {
                 case "/usuarios":
@@ -37,59 +33,45 @@ public class ServerConsoleManager implements Runnable {
                 case "/cerrar":
                     System.out.println("⛔ Cerrando servidor...");
                     server.shutdownServer();
-                    scanner.close();
                     return;
 
-                case "/ayuda":
-                    printHelp();
-                    break;
-
-                case "/broadcast":
-                    if (args.isEmpty()) {
-                        System.out.println("⚠️ Uso: /broadcast <mensaje>");
-                    } else {
-                        String systemMessage = "📢 [Sistema]: " + args;
-                        server.broadcast(systemMessage);
-                        System.out.println("✅ Mensaje enviado.");
-                    }
-                    break;
-
                 case "/kick":
-                    if (args.isEmpty()) {
-                        System.out.println("⚠️ Uso: /kick <nombre_usuario>");
+                    if (parts.length < 2 || parts[1].isBlank()) {
+                        System.out.println("❌ Uso: /kick <nombre_usuario>");
                     } else {
-                        boolean kicked = server.kickUser(args);
+                        boolean kicked = server.kickUser(parts[1].trim());
                         if (kicked) {
-                            System.out.println("✅ Usuario '" + args + "' desconectado.");
+                            System.out.println("✅ Usuario " + parts[1].trim() + " ha sido expulsado.");
                         } else {
-                            System.out.println("⚠️ Usuario no encontrado.");
+                            System.out.println("❌ Usuario " + parts[1].trim() + " no encontrado.");
                         }
                     }
                     break;
 
+                case "/broadcast":
+                    if (parts.length < 2 || parts[1].isBlank()) {
+                        System.out.println("❌ Uso: /broadcast <mensaje>");
+                    } else {
+                        String msg = "⚠️ [ADMIN]: " + parts[1].trim();
+                        server.broadcast(msg);
+                        System.out.println("✅ Mensaje enviado a todos.");
+                    }
+                    break;
+
                 case "/historial":
-                    System.out.println("📜 Últimos mensajes:");
-                    for (String msg : ChatServer.messageHistory) {
-                        System.out.println(msg);
+                    if (ChatServer.messageHistory.isEmpty()) {
+                        System.out.println("📭 No hay mensajes en el historial.");
+                    } else {
+                        System.out.println("📜 Historial de mensajes:");
+                        for (String msg : ChatServer.messageHistory) {
+                            System.out.println(msg);
+                        }
                     }
                     break;
 
                 default:
-                    System.out.println("❓ Comando no reconocido. Usa /ayuda para ver los comandos.");
+                    System.out.println("❓ Comando no reconocido. Usa: /usuarios, /cantidad, /kick <usuario>, /broadcast <mensaje>, /historial, /cerrar");
             }
         }
-    }
-
-    private void printHelp() {
-        System.out.println("""
-        📖 Comandos disponibles:
-         /usuarios              - Lista usuarios conectados
-         /cantidad              - Muestra cantidad de usuarios
-         /broadcast <mensaje>   - Envia mensaje global como sistema
-         /kick <usuario>        - Expulsa un usuario del chat
-         /historial             - Muestra el historial de mensajes
-         /cerrar                - Cierra el servidor
-         /ayuda                 - Muestra esta ayuda
-        """);
     }
 }

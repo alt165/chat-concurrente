@@ -21,23 +21,23 @@ public class ChatServer {
             serverSocket = new ServerSocket(port);
             System.out.println("✅ Servidor iniciado en el puerto " + port);
 
+            // Hilo de consola
             Thread consoleThread = new Thread(new ServerConsoleManager(this));
             consoleThread.start();
 
+            // Aceptar clientes
             while (isRunning) {
                 Socket clientSocket = serverSocket.accept();
 
                 if (clientHandlers.size() >= MAX_USERS) {
-                    System.out.println("🚫 Nuevo cliente rechazado: límite máximo de usuarios alcanzado.");
+                    System.out.println("🚫 Cliente rechazado: límite máximo alcanzado.");
                     clientSocket.close();
                     continue;
                 }
 
                 ClientHandler handler = new ClientHandler(clientSocket, this);
-                clientHandlers.add(handler);
+                clientJoined(handler); // <- aquí se usa el nuevo método
                 new Thread(handler).start();
-
-                System.out.println("🔌 Cliente conectado. Total: " + clientHandlers.size());
             }
 
         } catch (IOException e) {
@@ -49,16 +49,10 @@ public class ChatServer {
         }
     }
 
-    // Método modificado para ignorar al cliente que pregunta
-    public boolean isNameTaken(String name, ClientHandler askingClient) {
-        for (ClientHandler client : clientHandlers) {
-            if (client == askingClient) continue;
-            String existingName = client.getClientName();
-            if (existingName != null && existingName.equalsIgnoreCase(name)) {
-                return true;
-            }
-        }
-        return false;
+    // ✅ Nuevo método
+    public void clientJoined(ClientHandler client) {
+        clientHandlers.add(client);
+        System.out.println("🔌 Cliente conectado. Total: " + clientHandlers.size());
     }
 
     public void broadcast(String message) {
