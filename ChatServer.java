@@ -54,6 +54,9 @@ public class ChatServer {
     // Enviar mensaje a todos los clientes
     public void broadcast(String message) {
         messageHistory.offer(message); // Guardar en historial
+        if (messageHistory.size() > MAX_HISTORY) {
+            messageHistory.poll(); // Mantener tamaño máximo
+        }
 
         for (ClientHandler client : clientHandlers) {
             client.sendMessage(message);
@@ -81,6 +84,20 @@ public class ChatServer {
     // Contar usuarios conectados
     public int getConnectedUserCount() {
         return clientHandlers.size();
+    }
+
+    // Expulsar un usuario por nombre
+    public boolean kickUser(String username) {
+        for (ClientHandler client : clientHandlers) {
+            if (client.getClientName().equalsIgnoreCase(username)) {
+                client.sendMessage("⚠️ Has sido expulsado del chat por el administrador.");
+                client.closeConnection();
+                removeClient(client);
+                broadcast("⚠️ Usuario '" + username + "' fue expulsado del chat.");
+                return true;
+            }
+        }
+        return false; // Usuario no encontrado
     }
 
     // Apagar el servidor desde la consola
