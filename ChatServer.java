@@ -77,6 +77,20 @@ public class ChatServer {
             }
         }
     }
+    // Expulsar a un usuario por nombre
+    public boolean kickUser(String clientName) {
+        for (ClientHandler client : clientHandlers) {
+            if (client.getClientName().equalsIgnoreCase(clientName)) {
+                client.sendMessage("⚠️ Has sido expulsado por el administrador.");
+                client.closeConnection();
+                removeClient(client);
+                broadcast("⚠️ Usuario " + clientName + " fue expulsado.");
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     public int getConnectedUserCount() {
         return clientHandlers.size();
