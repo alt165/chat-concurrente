@@ -1,69 +1,80 @@
 import java.io.*;
-import java.net.*;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.net.Socket;
 
 public class ClientHandler implements Runnable {
 
-    private Socket socket;
-    private BufferedReader in;
+    private final Socket socket;
+    private final ChatServer server;
     private PrintWriter out;
-    private CopyOnWriteArrayList<ClientHandler> clients;
+    private BufferedReader in;
     private String clientName;
 
-    public ClientHandler(Socket socket, CopyOnWriteArrayList<ClientHandler> clients) {
+    public ClientHandler(Socket socket, ChatServer server) {
         this.socket = socket;
-        this.clients = clients;
+        this.server = server;
+    }
 
+    public String getClientName() {
+        return clientName;
+    }
+
+    public void sendMessage(String message) {
+        if (out != null) {
+            out.println(message);
+        }
+    }
+
+    public void closeConnection() {
         try {
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            out = new PrintWriter(socket.getOutputStream(), true);
-            out.println("Conectado al servidor. ¡Bienvenido al chat!");
+            if (socket != null && !socket.isClosed()) socket.close();
         } catch (IOException e) {
-            System.err.println("Error al crear streams: " + e.getMessage());
-            closeEverything();
+            System.err.println("Error al cerrar conexión del cliente " + clientName + ": " + e.getMessage());
         }
     }
 
     @Override
     public void run() {
         try {
-            // Nombre de usuario opcional (puede omitirse si no se desea)
-            out.println("Ingresa tu nombre:");
+            // Flujo de entrada/salida
+            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            out = new PrintWriter(socket.getOutputStream(), true);
+
+            // Solicita nombre de usuario
+            out.println("📝 Ingresá tu nombre de usuario:");
             clientName = in.readLine();
 
-            broadcast("🔵 " + clientName + " se ha unido al chat.");
+            if (clientName == null || clientName.isBlank()) {
+                clientName = "Anónimo";
+            }
 
+            server.broadcast("🟢 " + clientName + " se ha unido al chat.");
+
+            // Enviar historial si hay
+            if (!ChatServer.messageHistory.isEmpty()) {
+                out.println("📜 Historial de mensajes:");
+                for (String msg : ChatServer.messageHistory) {
+                    out.println(msg);
+                }
+            }
+
+            // Bucle de escucha
             String message;
             while ((message = in.readLine()) != null) {
                 if (message.equalsIgnoreCase("/salir")) {
                     break;
                 }
-                broadcast("💬 " + clientName + ": " + message);
+
+                String formatted = "💬 [" + clientName + "]: " + message;
+                server.broadcast(formatted);
             }
+
         } catch (IOException e) {
-            System.out.println("Cliente desconectado: " + clientName);
+            System.err.println("❌ Error con cliente " + clientName + ": " + e.getMessage());
+
         } finally {
-            broadcast("🔴 " + clientName + " ha salido del chat.");
-            closeEverything();
-        }
-    }
-
-    private void broadcast(String message) {
-        for (ClientHandler client : clients) {
-            if (client != this) {
-                client.out.println(message);
-            }
-        }
-    }
-
-    private void closeEverything() {
-        try {
-            clients.remove(this);
-            if (in != null) in.close();
-            if (out != null) out.close();
-            if (socket != null && !socket.isClosed()) socket.close();
-        } catch (IOException e) {
-            System.err.println("Error al cerrar conexión: " + e.getMessage());
+            server.removeClient(this);
+            server.broadcast("🔴 " + clientName + " ha salido del chat.");
+            closeConnection();
         }
     }
 }
